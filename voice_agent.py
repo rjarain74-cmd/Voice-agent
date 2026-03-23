@@ -105,7 +105,7 @@ for i, message in enumerate(st.session_state.chat_history):
 
 audio_input = st.audio_input("Speak now...", key="voice_mic_input")
 
-audio_input = st.audio_input("Speak now...", key="voice_mic_input")
+
 
 if audio_input is not None:
     audio_bytes = audio_input.getvalue()
