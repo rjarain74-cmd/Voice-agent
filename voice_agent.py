@@ -105,45 +105,53 @@ for i, message in enumerate(st.session_state.chat_history):
 
 audio_input = st.audio_input("Speak now...", key="voice_mic_input")
 
+audio_input = st.audio_input("Speak now...", key="voice_mic_input")
+
 if audio_input is not None:
-    if audio_input != st.session_state.last_processed_audio:
-        st.session_state.last_processed_audio = audio_input
-        
+    audio_bytes = audio_input.getvalue()
+
+    if audio_bytes != st.session_state.last_processed_audio:
+        st.session_state.last_processed_audio = audio_bytes
+
         try:
             with st.status("VoiceBridge is processing...", expanded=True) as status:
-               
                 st.write("🔍 Transcribing...")
-                transcript = transcribe_wav_bytes(audio_input.getvalue())
-                
+                transcript = transcribe_wav_bytes(audio_bytes)
+
                 if not transcript:
                     status.update(label="No voice detected!", state="error")
+                    st.session_state.last_processed_audio = None
                     st.stop()
-                
-               
+
                 st.write("🧠 Thinking...")
-               
-                api_history = [{"role": m["role"], "content": m["content"]} for m in st.session_state.chat_history[-5:]]
+
+                api_history = [
+                    {"role": m["role"], "content": m["content"]}
+                    for m in st.session_state.chat_history[-5:]
+                ]
+
                 messages = [{"role": "system", "content": CFG.system_prompt}]
                 messages.extend(api_history)
                 messages.append({"role": "user", "content": transcript})
-                
+
                 reply_text = groq_chat_completion(messages)
-                
-              
+
                 st.write("🔊 Generating Voice...")
                 reply_audio = text_to_speech_bytes(reply_text)
-                
+
+                st.session_state.chat_history.append({
+                    "role": "user",
+                    "content": transcript
+                })
+                st.session_state.chat_history.append({
+                    "role": "assistant",
+                    "content": reply_text,
+                    "audio": reply_audio
+                })
+
                 status.update(label="Done!", state="complete", expanded=False)
 
-       
-            st.session_state.chat_history.append({"role": "user", "content": transcript})
-            st.session_state.chat_history.append({
-                "role": "assistant", 
-                "content": reply_text, 
-                "audio": reply_audio 
-            })
-            
-            
+            st.rerun()
 
         except Exception as e:
             st.error(f"Error: {e}")
